@@ -35,7 +35,7 @@ jobs:
 
       - name: Wait for PostgreSQL
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
+          until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do
             echo "Waiting for postgres..."
             sleep 2
           done
@@ -43,7 +43,7 @@ jobs:
       - name: Initialize Database
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          PGPASSWORD=password psql -h localhost -U postgres -d tododb -f database/database.sql
+          PGPASSWORD=password psql -h 127.0.0.1 -U postgres -d tododb -f database/database.sql
 
       - name: Install backend dependencies
         run: |
@@ -52,22 +52,22 @@ jobs:
 
       - name: Run backend tests
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/tododb
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/tododb
           NODE_ENV: test
         run: |
           cd backend
           npm test
 
       - name: Login to Docker Hub
-        # Chạy khi push thẳng lên nhánh (cả dev và main)
-        if: github.event_name != 'pull_request'
+        # Chạy khi push thẳng lên nhánh và có secrets
+        if: github.event_name != 'pull_request' && secrets.DOCKER_HUB_USERNAME != ''
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build & Push Backend Image
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && secrets.DOCKER_HUB_USERNAME != ''
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -76,7 +76,7 @@ jobs:
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/devops-backend:${{ github.ref_name }}
 
       - name: Build & Push Frontend Image
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && secrets.DOCKER_HUB_USERNAME != ''
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -86,8 +86,8 @@ jobs:
   deploy-backend:
     name: Deploy Backend to Render
     needs: build-and-test
-    # 3. CHỐT CHẶN MỞ RỘNG: Cho phép chạy CD trên cả main và dev
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    # 3. CHỐT CHẶN MỞ RỘNG: Cho phép chạy CD trên cả main và dev khi có secrets
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && secrets.RENDER_DEPLOY_HOOK_BACKEND != ''
     runs-on: ubuntu-latest
 
     steps:

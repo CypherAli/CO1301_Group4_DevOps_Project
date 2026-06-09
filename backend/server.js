@@ -9,10 +9,12 @@ app.use(cors());
 app.use(express.json());
 
 // Cấu hình Pool kết nối database
+const isLocal = process.env.DATABASE_URL && (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1'));
+
 const poolConfig = process.env.DATABASE_URL 
    ? { 
        connectionString: process.env.DATABASE_URL,
-       ssl: { rejectUnauthorized: false } // Cần thiết khi kết nối tới Render/AWS RDS
+       ssl: isLocal ? false : { rejectUnauthorized: false } 
      }
    : {
        user: process.env.DB_USER || 'postgres',
