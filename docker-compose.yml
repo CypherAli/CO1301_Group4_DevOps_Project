@@ -1,0 +1,49 @@
+services:
+  # 1. Frontend service
+  frontend:
+    build: 
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=http://localhost:8080
+    platform: linux/amd64
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # 2. Backend service
+  backend:
+    build: ./backend
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://dev_user:YoFgi91hsQ5mXjqgrX3PD2Qzp00MNpY2@dpg-d8ctmp9o3t8c73ea5id0-a.singapore-postgres.render.com/tododb_id6k
+      - NODE_ENV=development
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3. Postgres service
+  db:
+    image: postgres:15
+    platform: linux/amd64
+    environment:
+      - POSTGRES_DB=tododb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/database.sql:/docker-entrypoint-initdb.d/database.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tododb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+

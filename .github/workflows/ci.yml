@@ -1,0 +1,90 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, dev ] # 1. Mở khóa trigger cho nhánh dev
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: tododb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run backend tests
+        env:
+          DB_HOST: localhost
+          DB_USER: postgres
+          DB_PASSWORD: password
+          DB_NAME: tododb
+          DB_PORT: 5432
+          NODE_ENV: test
+        run: |
+          cd backend
+          npm test
+
+      - name: Login to Docker Hub
+        # Chạy khi push thẳng lên nhánh (cả dev và main)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Build & Push Backend Image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          # 2. Dùng tag linh hoạt theo tên nhánh (sẽ ra :dev hoặc :main)
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/devops-backend:${{ github.ref_name }}
+
+      - name: Build & Push Frontend Image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/devops-frontend:${{ github.ref_name }}
+
+  deploy-backend:
+    name: Deploy Backend to Render
+    needs: build-and-test
+    # 3. CHỐT CHẶN MỞ RỘNG: Cho phép chạy CD trên cả main và dev
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Backend Deploy (Render)
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+
+      - name: Trigger Frontend Deploy (Render)
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
