@@ -2,6 +2,8 @@
 jest.mock('pg', () => {
   const mockPool = {
     query: jest.fn(),
+    on: jest.fn(), // Thêm phương thức .on() để không lỗi khi gọi pool.on('error')
+    end: jest.fn(),
   };
   
   return {
