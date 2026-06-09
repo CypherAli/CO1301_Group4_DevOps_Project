@@ -39,6 +39,11 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Set up database schema
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d tododb -f database/database.sql
+
       - name: Run backend tests
         working-directory: backend
         env:
