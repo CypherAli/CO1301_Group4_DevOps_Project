@@ -33,6 +33,11 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Wait for PostgreSQL
         run: |
           until pg_isready -h 127.0.0.1 -p 5432 -U postgres; do
@@ -42,7 +47,6 @@ jobs:
 
       - name: Initialize Database
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
           PGPASSWORD=password psql -h 127.0.0.1 -U postgres -d tododb -f database/database.sql
 
       - name: Install backend dependencies
