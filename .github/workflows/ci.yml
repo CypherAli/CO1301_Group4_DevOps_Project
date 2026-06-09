@@ -33,6 +33,16 @@ jobs:
         with:
           node-version: 18
 
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
+      - name: Initialize Database
+        run: PGPASSWORD=password psql -h localhost -U postgres -d tododb -f database/database.sql
+
       - name: Install backend dependencies
         run: |
           cd backend
