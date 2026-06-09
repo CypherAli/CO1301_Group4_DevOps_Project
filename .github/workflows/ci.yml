@@ -52,11 +52,7 @@ jobs:
 
       - name: Run backend tests
         env:
-          DB_HOST: localhost
-          DB_USER: postgres
-          DB_PASSWORD: password
-          DB_NAME: tododb
-          DB_PORT: 5432
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/tododb
           NODE_ENV: test
         run: |
           cd backend
