@@ -41,7 +41,9 @@ jobs:
           done
 
       - name: Initialize Database
-        run: PGPASSWORD=password psql -h localhost -U postgres -d tododb -f database/database.sql
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=password psql -h localhost -U postgres -d tododb -f database/database.sql
 
       - name: Install backend dependencies
         run: |
