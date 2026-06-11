@@ -8,13 +8,28 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// BUG #1: Wrong default password - doesn't match docker-compose!
-const pool = new Pool({
-   user: process.env.DB_USER || 'postgres',
-   host: process.env.DB_HOST || 'localhost',
-   database: process.env.DB_NAME || 'tododb',
-   password: process.env.DB_PASSWORD || 'wrongpassword',
-   port: process.env.DB_PORT || 5432,
+// Cấu hình Pool kết nối database
+const isLocal = !process.env.DATABASE_URL || 
+                process.env.DATABASE_URL.includes('localhost') || 
+                process.env.DATABASE_URL.includes('127.0.0.1');
+
+const poolConfig = process.env.DATABASE_URL 
+   ? { 
+       connectionString: process.env.DATABASE_URL,
+       ssl: isLocal ? false : { rejectUnauthorized: false } 
+     }
+   : {
+       user: process.env.DB_USER || 'postgres',
+       host: process.env.DB_HOST || 'localhost',
+       database: process.env.DB_NAME || 'tododb',
+       password: process.env.DB_PASSWORD || 'password',
+       port: process.env.DB_PORT || 5432,
+     };
+
+const pool = new Pool(poolConfig);
+
+pool.on('error', (err) => {
+   console.error('Unexpected error on idle client', err);
 });
 
 app.get('/health', (req, res) => {
@@ -31,15 +46,15 @@ app.get('/api/todos', async (req, res) => {
    }
 });
 
-// BUG #2: Missing validation - will cause test to fail!
-// STUDENT TODO: Add validation to reject empty title
+// POST todos
 app.post('/api/todos', async (req, res) => {
    try {
       const { title, completed = false } = req.body;
 
-      // STUDENT FIX: Add validation here!
-      // Hint: Check if title is empty or undefined
-      // Return 400 status with error message if invalid
+      // FIX BUG #2: Kiểm tra title rỗng, trả về mã 400
+      if (!title || title.trim() === '') {
+         return res.status(400).json({ error: 'Title is required' });
+      }
 
       const result = await pool.query(
          'INSERT INTO todos(title, completed) VALUES($1, $2) RETURNING *',
@@ -51,19 +66,53 @@ app.post('/api/todos', async (req, res) => {
    }
 });
 
-// BUG #3: Missing DELETE endpoint - but test expects it!
-// STUDENT TODO: Implement DELETE /api/todos/:id endpoint
+// FIX BUG #3: Bổ sung endpoint DELETE
+app.delete('/api/todos/:id', async (req, res) => {
+   try {
+      const { id } = req.params;
+      const result = await pool.query('DELETE FROM todos WHERE id = $1 RETURNING *', [id]);
+      
+      if (result.rows.length === 0) {
+         return res.status(404).json({ error: 'Todo not found' });
+      }
+      res.status(200).json({ message: 'Todo deleted successfully' });
+   } catch (err) {
+      res.status(500).json({ error: err.message });
+   }
+});
 
-// BUG #4: Missing PUT endpoint for updating todos
-// STUDENT TODO: Implement PUT /api/todos/:id endpoint
+// FIX BUG #4: Bổ sung endpoint PUT
+app.put('/api/todos/:id', async (req, res) => {
+   try {
+      const { id } = req.params;
+      const { title, completed } = req.body;
+
+      if (!title || title.trim() === '') {
+         return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const result = await pool.query(
+         'UPDATE todos SET title = $1, completed = $2 WHERE id = $3 RETURNING *',
+         [title, completed, id]
+      );
+
+      if (result.rows.length === 0) {
+         return res.status(404).json({ error: 'Todo not found' });
+      }
+      res.status(200).json(result.rows[0]);
+   } catch (err) {
+      res.status(500).json({ error: err.message });
+   }
+});
 
 const port = process.env.PORT || 8080;
 
-// BUG #5: Server starts even in test mode, causing port conflicts
-// STUDENT FIX: Only start server if NOT in test mode
-app.listen(port, () => {
-   console.log(`Backend running on port ${port}`);
-});
+// FIX BUG #5: Ngăn server chiếm port khi chạy test
+if (process.env.NODE_ENV !== 'test') {
+   app.listen(port, () => {
+      console.log(`Backend running on port ${port}`);
+   });
+}
 
-// BUG #6: App not exported - tests can't import it!
-// STUDENT FIX: Export the app module
+// FIX BUG #6: Export app để sử dụng trong các file test
+module.exports = app;
