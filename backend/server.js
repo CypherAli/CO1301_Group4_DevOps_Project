@@ -11,7 +11,8 @@ app.use(express.json());
 // Cấu hình Pool kết nối database
 const isLocal = !process.env.DATABASE_URL || 
                 process.env.DATABASE_URL.includes('localhost') || 
-                process.env.DATABASE_URL.includes('127.0.0.1');
+                process.env.DATABASE_URL.includes('127.0.0.1') ||
+                process.env.DATABASE_URL.includes('db');
 
 const poolConfig = process.env.DATABASE_URL 
    ? { 
