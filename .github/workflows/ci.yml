@@ -80,6 +80,6 @@ jobs:
       - name: Trigger Backend Deploy (Render)
         run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
 
-      # Frontend: Vercel builds from source on push
-      - name: Trigger Frontend Deploy (Vercel)
-        run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_FRONTEND }}
+      # Frontend: Render builds from source on push
+      - name: Trigger Frontend Deploy (Render)
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
