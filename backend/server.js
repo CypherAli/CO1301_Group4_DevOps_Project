@@ -10,22 +10,22 @@ app.use(express.json());
 
 // Cấu hình Pool kết nối database
 const isLocal = !process.env.DATABASE_URL || 
-                process.env.DATABASE_URL.includes('localhost') || 
-                process.env.DATABASE_URL.includes('127.0.0.1') ||
-                process.env.DATABASE_URL.includes('db');
+               process.env.DATABASE_URL.includes('localhost') || 
+               process.env.DATABASE_URL.includes('127.0.0.1') ||
+               process.env.DATABASE_URL.includes('db');
 
 const poolConfig = process.env.DATABASE_URL 
    ? { 
-       connectionString: process.env.DATABASE_URL,
-       ssl: isLocal ? false : { rejectUnauthorized: false } 
-     }
+      connectionString: process.env.DATABASE_URL,
+      ssl: isLocal ? false : { rejectUnauthorized: false } 
+   }
    : {
-       user: process.env.DB_USER || 'postgres',
-       host: process.env.DB_HOST || 'localhost',
-       database: process.env.DB_NAME || 'tododb',
-       password: process.env.DB_PASSWORD || 'password',
-       port: process.env.DB_PORT || 5432,
-     };
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'tododb',
+      password: process.env.DB_PASSWORD || 'password',
+      port: process.env.DB_PORT || 5432,
+   };
 
 const pool = new Pool(poolConfig);
 
@@ -52,10 +52,10 @@ app.post('/api/todos', async (req, res) => {
    try {
       const { title, completed = false } = req.body;
 
-      // FIX BUG #2: Kiểm tra title rỗng, trả về mã 400
-      if (!title || title.trim() === '') {
-         return res.status(400).json({ error: 'Title is required' });
-      }
+      // // FIX BUG #2: Kiểm tra title rỗng, trả về mã 400
+      // if (!title || title.trim() === '') {
+      //    return res.status(400).json({ error: 'Title is required' });
+      // }
 
       const result = await pool.query(
          'INSERT INTO todos(title, completed) VALUES($1, $2) RETURNING *',

@@ -14,9 +14,12 @@ FROM node:18-alpine AS production
 WORKDIR /app
 
 COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production
+# Cài đặt tất cả dependencies (bao gồm devDependencies) để có thể chạy test trong container
+RUN npm install
 
 COPY --from=builder /app/server.js ./
+COPY --from=builder /app/jest.config.js ./
+COPY --from=builder /app/tests ./tests
 
 EXPOSE 8080
 
